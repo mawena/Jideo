@@ -64,3 +64,28 @@ def source_img():
     from insightface.data import get_image
 
     return get_image("Tom_Hanks_54745")
+
+
+@pytest.fixture(scope="session")
+def make_video(tmp_path_factory):
+    import subprocess
+
+    directory = tmp_path_factory.mktemp("videos")
+
+    def _make(name, *args):
+        out = directory / name
+        if not out.exists():
+            subprocess.run(["ffmpeg", "-v", "error", "-y", *args, str(out)], check=True)
+        return out
+
+    return _make
+
+
+@pytest.fixture(scope="session")
+def sample_video(make_video):
+    return make_video(
+        "sample.mp4",
+        "-f", "lavfi", "-i", "testsrc=size=320x240:rate=10",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100",
+        "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+    )
