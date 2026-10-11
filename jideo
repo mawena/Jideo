@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Façade de Jideo — ./jideo help
+set -euo pipefail
+cd "$(dirname "$(readlink -f "$0")")"
+
+compose() { docker compose "$@"; }
+die() { echo "✗ $*" >&2; exit 1; }
+
+ensure_env() {
+  if [[ ! -f .env ]]; then
+    cp .env.example .env
+    local secret
+    secret=$(python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null || openssl rand -hex 32)
+    sed -i "s/^JIDEO_SECRET=.*/JIDEO_SECRET=${secret}/" .env
+    sed -i "s/^JIDEO_UID=.*/JIDEO_UID=$(id -u)/; s/^JIDEO_GID=.*/JIDEO_GID=$(id -g)/" .env
+    echo "→ .env créé"
+  fi
+  mkdir -p data
+}
+
+url() {
+  set -a; source .env; set +a
+  local host="${JIDEO_BIND:-127.0.0.1}"
+  [[ "$host" == "0.0.0.0" ]] && host="localhost"
+  echo "http://${host}:${JIDEO_PORT:-4545}"
+}
+
+usage() {
+  cat <<'EOT'
+Usage : ./jideo <commande>
+  install   crée .env, construit l'image, télécharge les modèles, démarre
+  start     démarre Jideo
+  stop      arrête Jideo
+  restart   redémarre Jideo
+  status    état du conteneur
+  logs      suit les journaux
+  shell     shell dans le conteneur
+  build     reconstruit l'image
+  test      lance pytest dans le conteneur (arguments transmis à pytest)
+EOT
+}
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  install)
+    command -v docker >/dev/null || die "Docker est requis"
+    ensure_env
+    compose build
+    compose up -d
+    echo "✓ Jideo tourne sur $(url)"
+    ;;
+  start)   ensure_env; compose up -d; echo "✓ Jideo tourne sur $(url)" ;;
+  stop)    compose down ;;
+  restart) compose restart ;;
+  status)  compose ps ;;
+  logs)    compose logs -f jideo ;;
+  shell)   compose exec jideo bash ;;
+  build)   ensure_env; compose build ;;
+  test)    ensure_env; compose run --rm --no-deps jideo pytest "$@" ;;
+  help)    usage ;;
+  *)       usage; exit 1 ;;
+esac
