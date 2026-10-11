@@ -47,6 +47,16 @@ def test_probe_rejects_garbage(tmp_path):
         probe(bad)
 
 
+def test_error_messages_are_french_only_and_details_are_logged(tmp_path, caplog):
+    bad = tmp_path / "bad.mp4"
+    bad.write_bytes(b"pas une video")
+    with caplog.at_level("WARNING", logger="jideo.video"), pytest.raises(VideoError) as exc:
+        probe(bad)
+    assert "/" not in str(exc.value)
+    assert "Invalid" not in str(exc.value)
+    assert any("Invalid" in r.getMessage() for r in caplog.records)
+
+
 def test_extract_frame_and_thumbnail(sample_video, tmp_path):
     assert extract_frame(sample_video, 1.0).shape == (240, 320, 3)
     thumb = tmp_path / "t.jpg"
@@ -121,6 +131,40 @@ def test_silent_video(make_video, tmp_path):
     dst = tmp_path / "out.mp4"
     run(src, dst, tmp_path)
     assert not probe(dst).has_audio
+
+
+@pytest.mark.parametrize(("name", "extra"), [("full.mkv", []), ("full.mp4", ["-movflags", "+faststart"])])
+def test_truncated_source_is_an_error(make_video, tmp_path, caplog, name, extra):
+    # Le conteneur annonce 2 s (index/durée en tête de fichier) mais la moitié des octets manque.
+    full = make_video(
+        name, "-f", "lavfi", "-i", "testsrc=size=320x240:rate=10", "-t", "2",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", *extra,
+    )
+    data = full.read_bytes()
+    cut = tmp_path / ("cut" + full.suffix)
+    cut.write_bytes(data[: len(data) // 2])
+    assert probe(cut).duration == pytest.approx(2, abs=0.1)
+    dst = tmp_path / "out.mp4"
+    with caplog.at_level("WARNING", logger="jideo.video"), pytest.raises(VideoError, match="jusqu'au bout"):
+        run(cut, dst, tmp_path)
+    assert not dst.exists()
+    assert any(r.name == "jideo.video" for r in caplog.records)
+
+
+def test_audio_not_copyable_to_mp4_is_reencoded_to_aac(make_video, tmp_path):
+    src = make_video(
+        "mulaw.mkv", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=10",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "1",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "pcm_mulaw", "-shortest",
+    )
+    dst = tmp_path / "out.mp4"
+    run(src, dst, tmp_path)
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_name",
+         "-of", "csv=p=0", str(dst)],
+        capture_output=True, text=True, check=True,
+    )
+    assert out.stdout.strip() == "aac"
 
 
 # --- Review Focus -----------------------------------------------------------

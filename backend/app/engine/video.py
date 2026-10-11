@@ -5,6 +5,7 @@ Aucune image intermédiaire n'est écrite sur disque.
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import subprocess
 import time
@@ -17,6 +18,8 @@ import numpy as np
 
 from app.engine.watermark import AI_NOTICE
 from app.errors import Cancelled, UserError
+
+log = logging.getLogger("jideo.video")
 
 FrameFn = Callable[[np.ndarray], tuple[np.ndarray, bool]]
 
@@ -43,9 +46,20 @@ class VideoStats:
 def _run(cmd: list[str], error: str) -> subprocess.CompletedProcess:
     proc = subprocess.run(cmd, capture_output=True)
     if proc.returncode != 0:
-        detail = proc.stderr.decode(errors="replace").strip().splitlines()[-1:] or [""]
-        raise VideoError(f"{error} ({detail[0]})" if detail[0] else error)
+        detail = proc.stderr.decode(errors="replace").strip().splitlines()[-3:]
+        log.warning("%s : %s (code %s) : %s", error, cmd[0], proc.returncode, " | ".join(detail))
+        raise VideoError(error)
     return proc
+
+
+def _log_tails(*logs: Path) -> None:
+    for path in logs:
+        try:
+            tail = path.read_bytes()[-2000:].decode(errors="replace").strip().splitlines()[-5:]
+        except OSError:
+            continue
+        if tail:
+            log.warning("%s : %s", path.name, " | ".join(tail))
 
 
 def _rate(value: str | None) -> float:
@@ -87,7 +101,7 @@ def probe(path: Path) -> VideoInfo:
 
 def extract_frame(path: Path, t: float) -> np.ndarray:
     proc = subprocess.run(
-        ["ffmpeg", "-v", "error", "-ss", f"{max(0.0, t):.3f}", "-i", str(path),
+        ["ffmpeg", "-nostdin", "-v", "error", "-ss", f"{max(0.0, t):.3f}", "-i", str(path),
          "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png", "-"],
         capture_output=True,
     )
@@ -99,7 +113,7 @@ def extract_frame(path: Path, t: float) -> np.ndarray:
 
 def make_thumbnail(path: Path, dest: Path, t: float = 0.0, width: int = 480) -> None:
     _run(
-        ["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", str(path),
+        ["ffmpeg", "-nostdin", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", str(path),
          "-frames:v", "1", "-vf", f"scale={width}:-2", str(dest)],
         "Impossible de créer la miniature",
     )
@@ -117,10 +131,10 @@ def _mux(video: Path, src: Path, start: float, duration: float, dst: Path,
     part = tmp_dir / "muxed.mp4"
     meta = ["-metadata", f"comment={notice}", "-movflags", "+faststart"]
     if not has_audio:
-        _run(["ffmpeg", "-v", "error", "-y", "-i", str(video), "-c:v", "copy", *meta, str(part)],
+        _run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(video), "-c:v", "copy", *meta, str(part)],
              "Échec de l'assemblage de la vidéo")
     else:
-        base = ["ffmpeg", "-v", "error", "-y", "-i", str(video),
+        base = ["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(video),
                 "-ss", f"{start:.3f}", "-t", f"{duration:.3f}", "-i", str(src),
                 "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-shortest"]
         try:
@@ -147,19 +161,20 @@ def process_video(
     frame_bytes = width * height * 3
     silent = tmp_dir / "video.mp4"
 
-    decode = ["ffmpeg", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{duration:.3f}", "-i", str(src),
+    decode = ["ffmpeg", "-nostdin", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{duration:.3f}", "-i", str(src),
               "-vf", f"fps={info.fps:.6f},scale={width}:{height}",
               "-f", "rawvideo", "-pix_fmt", "bgr24", "-"]
-    encode = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24",
+    encode = ["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24",
               "-s", f"{width}x{height}", "-r", f"{info.fps:.6f}", "-i", "-",
               "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", str(silent)]
 
     with (tmp_dir / "decode.log").open("wb") as dec_log, (tmp_dir / "encode.log").open("wb") as enc_log:
-        dec = subprocess.Popen(decode, stdout=subprocess.PIPE, stderr=dec_log)
-        enc = subprocess.Popen(encode, stdin=subprocess.PIPE, stderr=enc_log)
+        dec = enc = None
         done = matched = 0
         started = time.monotonic()
         try:
+            dec = subprocess.Popen(decode, stdout=subprocess.PIPE, stderr=dec_log)
+            enc = subprocess.Popen(encode, stdin=subprocess.PIPE, stderr=enc_log)
             while True:
                 if should_cancel():
                     raise Cancelled()
@@ -176,13 +191,17 @@ def process_video(
                     on_progress(done, max(total, done), done / elapsed if elapsed > 0 else None)
             enc.stdin.close()
             if enc.wait() != 0:
+                _log_tails(tmp_dir / "encode.log")
                 raise VideoError("Échec de l'encodage vidéo")
-            dec.wait()
+            if dec.wait() != 0 or done < 0.9 * total:
+                _log_tails(tmp_dir / "decode.log")
+                raise VideoError("La vidéo source n'a pas pu être lue jusqu'au bout")
         except BrokenPipeError as exc:
+            _log_tails(tmp_dir / "encode.log")
             raise VideoError("Échec de l'encodage vidéo") from exc
         finally:
             for proc in (dec, enc):
-                if proc.poll() is None:
+                if proc is not None and proc.poll() is None:
                     proc.kill()
                     proc.wait()
 
