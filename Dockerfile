@@ -1,3 +1,10 @@
+FROM node:22-slim AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp
 RUN apt-get update \
@@ -10,5 +17,6 @@ RUN pip install --no-cache-dir setuptools wheel cython==3.0.11 numpy==1.26.4 \
  && pip install --no-cache-dir --no-build-isolation insightface==0.7.3 \
  && pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./
+COPY --from=frontend /frontend/dist ./static
 EXPOSE 4545
 CMD ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--port", "4545"]

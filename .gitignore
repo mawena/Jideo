@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .env
 .venv/
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e/fixtures/
+frontend/dist/
