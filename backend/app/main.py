@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import media
+from app.api import events, jobs, media
 from app.config import Settings, load_settings
 from app.db import Database
 from app.engine import EngineHolder
@@ -61,6 +61,8 @@ def create_app(settings: Settings | None = None, *, engines=None, start_worker: 
         return {"status": "ok", "models_ready": engines.ready(), "auth_required": settings.auth_required}
 
     app.include_router(media.router)
+    app.include_router(jobs.router)
+    app.include_router(events.router)
 
     if STATIC_DIR.is_dir():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
