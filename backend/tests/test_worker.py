@@ -75,7 +75,18 @@ def test_unexpected_error_marks_failed(db, storage):
     job = db.insert_job(type="photo", params={})
     worker.run_once()
     got = db.get_job(job["id"])
-    assert got["status"] == "failed" and got["message"].startswith("Erreur interne")
+    assert got["status"] == "failed"
+    assert got["message"] == "Erreur interne (voir les journaux du serveur)"
+    assert "boum" not in got["message"]
+
+
+def test_unserializable_stats_fail_instead_of_staying_running(db, storage):
+    worker, bus = make_worker(db, storage, {"photo": lambda ctx: JobResult(None, {"x": object()})})
+    job = db.insert_job(type="photo", params={})
+    worker.run_once()
+    got = db.get_job(job["id"])
+    assert got["status"] == "failed" and got["finished_at"] is not None
+    assert bus.events[-1]["type"] == "failed"
 
 
 def test_unknown_type_fails(db, storage):
@@ -103,14 +114,47 @@ def test_cancel_running_job(db, storage):
             time.sleep(0.01)
         raise Cancelled()
 
-    worker, _ = make_worker(db, storage, {"video": handler})
+    worker, bus = make_worker(db, storage, {"video": handler})
     job = db.insert_job(type="video", params={})
     thread = threading.Thread(target=worker.run_once)
     thread.start()
     assert started.wait(2)
     assert worker.cancel(job["id"])
     thread.join(2)
+    assert not thread.is_alive()
     assert db.get_job(job["id"])["status"] == "cancelled"
+    assert bus.events[-1]["type"] == "cancelled"
+
+
+def test_cancel_running_job_that_ignores_the_flag(db, storage):
+    started, release = threading.Event(), threading.Event()
+    dest = storage.result_path("x", ".txt")
+
+    def handler(ctx):
+        dest.write_text("résultat")
+        started.set()
+        release.wait(2)
+        return JobResult(dest)
+
+    worker, bus = make_worker(db, storage, {"photo": handler})
+    job = db.insert_job(type="photo", params={})
+    thread = threading.Thread(target=worker.run_once)
+    thread.start()
+    assert started.wait(2)
+    assert worker.cancel(job["id"])
+    release.set()
+    thread.join(2)
+    assert not thread.is_alive()
+    got = db.get_job(job["id"])
+    assert got["status"] == "cancelled" and got["finished_at"] is not None
+    assert not dest.exists()
+    assert bus.events[-1]["type"] == "cancelled" and bus.events[-1]["job"]["result_url"] is None
+
+
+def test_cancel_unknown_job_returns_false(db, storage):
+    worker, _ = make_worker(db, storage, {})
+    assert worker.cancel("inconnu") is False
+    assert worker._cancel == set()
 
 
 def test_cancel_finished_job_returns_false(db, storage):
