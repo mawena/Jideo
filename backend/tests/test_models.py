@@ -53,3 +53,17 @@ def test_download_zip_is_extracted_and_flattened(tmp_path):
     m.download_model(spec, tmp_path / "models", log=quiet)
     assert m.missing_models(tmp_path / "models", specs=(spec,)) == []
     assert not list((tmp_path / "models").glob("*.download"))
+
+
+def test_main_download_reports_failure_in_french(tmp_path, monkeypatch, capsys):
+    spec = m.ModelSpec(
+        name="x", url=(tmp_path / "absent.onnx").as_uri(), sha256="0" * 64, required_files=("x.onnx",)
+    )
+    monkeypatch.setattr(m, "MODEL_SPECS", (spec,))
+    assert m.main(["download", "--models-dir", str(tmp_path / "models")]) == 1
+    assert "✗ x : échec du téléchargement" in capsys.readouterr().err
+
+
+def test_main_check_returns_1_when_models_missing(tmp_path, capsys):
+    assert m.main(["check", "--models-dir", str(tmp_path)]) == 1
+    assert "Manquants" in capsys.readouterr().out

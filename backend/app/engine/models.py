@@ -9,6 +9,7 @@ import hashlib
 import os
 import shutil
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 from dataclasses import dataclass
@@ -78,7 +79,7 @@ def download_model(spec: ModelSpec, models_dir: Path, *, log=print) -> str:
     part = models_dir / f"{spec.name}.download"
     log(f"↓ {spec.name} …")
     try:
-        with urllib.request.urlopen(spec.url) as response, part.open("wb") as out:
+        with urllib.request.urlopen(spec.url, timeout=60) as response, part.open("wb") as out:
             shutil.copyfileobj(response, out, 1024 * 1024)
         digest = sha256_of(part)
         if spec.sha256 and digest != spec.sha256:
@@ -108,13 +109,17 @@ def main(argv: list[str] | None = None) -> int:
         "--models-dir", type=Path, default=Path(os.environ.get("JIDEO_DATA_DIR", "data")) / "models"
     )
     args = parser.parse_args(argv)
-    missing = missing_models(args.models_dir)
+    missing = missing_models(args.models_dir, MODEL_SPECS)
     if args.command == "check":
         print("✓ Tous les modèles sont présents" if not missing else "✗ Manquants : " + ", ".join(missing))
         return 1 if missing else 0
     for spec in MODEL_SPECS:
         if spec.name in missing:
-            download_model(spec, args.models_dir)
+            try:
+                download_model(spec, args.models_dir)
+            except (ModelChecksumError, urllib.error.URLError, zipfile.BadZipFile, OSError) as exc:
+                print(f"✗ {spec.name} : échec du téléchargement ({exc})", file=sys.stderr)
+                return 1
         else:
             print(f"✓ {spec.name} déjà présent")
     return 0
