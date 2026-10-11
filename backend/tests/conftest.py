@@ -89,3 +89,30 @@ def sample_video(make_video):
         "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100",
         "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
     )
+
+
+@pytest.fixture
+def make_client(settings):
+    import dataclasses
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+    from tests.fakes import FakeEngineHolder
+
+    clients = []
+
+    def _make(engines=None, **overrides):
+        app = create_app(
+            dataclasses.replace(settings, **overrides),
+            engines=engines or FakeEngineHolder(),
+            start_worker=False,
+        )
+        client = TestClient(app)
+        client.__enter__()
+        clients.append(client)
+        return client
+
+    yield _make
+    for client in clients:
+        client.__exit__(None, None, None)
