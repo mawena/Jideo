@@ -46,6 +46,7 @@ case "$cmd" in
     command -v docker >/dev/null || die "Docker est requis"
     ensure_env
     compose build
+    compose run --rm --no-deps jideo python -m app.engine.models download
     compose up -d
     echo "✓ Jideo tourne sur $(url)"
     ;;
