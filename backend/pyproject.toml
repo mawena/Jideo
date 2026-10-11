@@ -4,5 +4,6 @@ pythonpath = ["."]
 addopts = "-p no:cacheprovider"
 filterwarnings = [
     "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning:starlette.testclient",
+    "ignore:`estimate` is deprecated:FutureWarning:insightface.utils.face_align",
 ]
 markers = ["slow: utilise les vrais modèles ONNX (ignoré si data/models est incomplet)"]
