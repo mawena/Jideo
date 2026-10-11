@@ -21,6 +21,14 @@ def test_blank_image_has_no_face(detector):
     assert detector.detect(np.zeros((480, 640, 3), np.uint8)) == []
 
 
+def test_tight_crop_is_detected_via_padding(detector, source_img):
+    h, w = source_img.shape[:2]
+    faces = detector.detect(source_img)
+    assert len(faces) == 1
+    x1, y1, x2, y2 = faces[0].bbox
+    assert x1 < w and y1 < h and x2 > 0 and y2 > 0
+
+
 def test_swap_puts_source_identity_on_target(detector, swapper, group_img, source_img):
     source = detector.detect(source_img)[0]
     target = detector.detect(group_img)[0]
@@ -29,8 +37,10 @@ def test_swap_puts_source_identity_on_target(detector, swapper, group_img, sourc
     out = swapper.swap(group_img, target, source.embedding)
 
     assert out.shape == group_img.shape
+    redetected = detector.detect(out)
+    assert redetected
     swapped = min(
-        detector.detect(out),
+        redetected,
         key=lambda f: abs(f.bbox[0] - target.bbox[0]) + abs(f.bbox[1] - target.bbox[1]),
     )
     assert similarity(swapped.embedding, source.embedding) > before + 0.2

@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 
@@ -32,14 +33,22 @@ class FaceDetector:
         self._app.prepare(ctx_id=-1, det_size=det_size)
 
     def detect(self, img: np.ndarray) -> list[DetectedFace]:
-        faces = [
+        faces = self._analyse(img)
+        if not faces:
+            # Photo recadrée au plus près du visage : le détecteur a besoin d'une marge.
+            pad = round(0.25 * max(img.shape[:2]))
+            padded = cv2.copyMakeBorder(img, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
+            faces = self._analyse(padded, offset=pad)
+        faces.sort(key=lambda f: (f.bbox[0], f.bbox[1]))
+        return faces
+
+    def _analyse(self, img: np.ndarray, offset: int = 0) -> list[DetectedFace]:
+        return [
             DetectedFace(
-                bbox=tuple(float(v) for v in f.bbox),
+                bbox=tuple(float(v) - offset for v in f.bbox),
                 score=float(f.det_score),
-                kps=np.asarray(f.kps, dtype=np.float32),
+                kps=np.asarray(f.kps, dtype=np.float32) - np.float32(offset),
                 embedding=np.asarray(f.normed_embedding, dtype=np.float32),
             )
             for f in self._app.get(img)
         ]
-        faces.sort(key=lambda f: (f.bbox[0], f.bbox[1]))
-        return faces

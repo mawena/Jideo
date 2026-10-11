@@ -61,9 +61,6 @@ def group_img():
 
 @pytest.fixture(scope="session")
 def source_img():
-    import cv2
     from insightface.data import get_image
 
-    # L'image est un recadrage 112x112 serré sur le visage : sans marge, le détecteur ne le trouve pas.
-    img = get_image("Tom_Hanks_54745")
-    return cv2.copyMakeBorder(img, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+    return get_image("Tom_Hanks_54745")
