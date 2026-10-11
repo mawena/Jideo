@@ -1,0 +1,7 @@
+data/
+backend/static/
+node_modules/
+__pycache__/
+*.pyc
+.env
+.venv/
