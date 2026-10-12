@@ -37,6 +37,7 @@ Usage : ./jideo <commande>
   shell     shell dans le conteneur
   build     reconstruit l'image
   test      lance pytest dans le conteneur (arguments transmis à pytest)
+  e2e       test de bout en bout (Jideo doit tourner, modèles installés)
 EOT
 }
 
@@ -58,6 +59,14 @@ case "$cmd" in
   shell)   compose exec jideo bash ;;
   build)   ensure_env; compose build ;;
   test)    ensure_env; compose run --rm --no-deps jideo pytest "$@" ;;
+  e2e)
+    mkdir -p frontend/e2e/fixtures
+    compose run --rm --no-deps -v "$PWD/frontend/e2e/fixtures:/out" jideo bash -c '
+      python -c "import cv2; from insightface.data import get_image as g; cv2.imwrite(\"/out/source.png\", g(\"Tom_Hanks_54745\")); cv2.imwrite(\"/out/group.jpg\", g(\"t1\"))" &&
+      ffmpeg -v error -y -loop 1 -i /out/group.jpg -f lavfi -i sine=frequency=440 -t 2 -r 10 \
+        -vf scale=640:-2 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest /out/clip.mp4'
+    (cd frontend && npx playwright install chromium && npx playwright test "$@")
+    ;;
   help)    usage ;;
   *)       usage; exit 1 ;;
 esac
