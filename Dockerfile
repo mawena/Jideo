@@ -6,7 +6,7 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp NO_ALBUMENTATIONS_UPDATE=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg build-essential \
  && rm -rf /var/lib/apt/lists/*
