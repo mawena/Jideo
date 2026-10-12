@@ -1,8 +1,9 @@
 """Mot de passe unique, obligatoire dès que Jideo écoute hors de localhost."""
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import hmac
-import time
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
@@ -17,8 +18,10 @@ PUBLIC_PATHS = {"/api/health", "/api/login", "/api/logout"}
 router = APIRouter()
 
 
-def _serializer(secret: str) -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(secret, salt="jideo-session")
+def _serializer(settings) -> URLSafeTimedSerializer:
+    # Le sel dépend du mot de passe : changer le mot de passe invalide toutes les sessions.
+    digest = hashlib.sha256((settings.password or "").encode()).hexdigest()
+    return URLSafeTimedSerializer(settings.secret, salt=f"jideo-session-{digest}")
 
 
 def is_authenticated(request: Request) -> bool:
@@ -29,7 +32,7 @@ def is_authenticated(request: Request) -> bool:
     if not token:
         return False
     try:
-        _serializer(settings.secret).loads(token, max_age=MAX_AGE)
+        _serializer(settings).loads(token, max_age=MAX_AGE)
     except BadSignature:
         return False
     return True
@@ -47,16 +50,16 @@ class Login(BaseModel):
 
 
 @router.post("/api/login", status_code=204)
-def login(body: Login, request: Request) -> Response:
+async def login(body: Login, request: Request) -> Response:
     settings = request.app.state.settings
     if not settings.auth_required:
         return Response(status_code=204)
     if not hmac.compare_digest(body.password.encode(), settings.password.encode()):
-        time.sleep(LOGIN_FAILURE_DELAY)
+        await asyncio.sleep(LOGIN_FAILURE_DELAY)
         return JSONResponse({"detail": "Mot de passe incorrect"}, status_code=401)
     response = Response(status_code=204)
     response.set_cookie(
-        COOKIE, _serializer(settings.secret).dumps("ok"), max_age=MAX_AGE, httponly=True, samesite="lax"
+        COOKIE, _serializer(settings).dumps("ok"), max_age=MAX_AGE, httponly=True, samesite="lax"
     )
     return response
 

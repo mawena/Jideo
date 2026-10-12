@@ -36,3 +36,13 @@ def test_login_flow(exposed):
 def test_forged_cookie_is_rejected(exposed):
     exposed.cookies.set("jideo_session", "forge")
     assert exposed.get("/api/jobs").status_code == 401
+
+
+def test_session_is_invalidated_by_password_change(make_client, monkeypatch):
+    monkeypatch.setattr(auth, "LOGIN_FAILURE_DELAY", 0)
+    first = make_client(bind="0.0.0.0", password="ancien", secret="s" * 32)
+    assert first.post("/api/login", json={"password": "ancien"}).status_code == 204
+    cookie = first.cookies.get("jideo_session")
+    second = make_client(bind="0.0.0.0", password="nouveau", secret="s" * 32)
+    second.cookies.set("jideo_session", cookie)
+    assert second.get("/api/jobs").status_code == 401

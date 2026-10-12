@@ -212,8 +212,10 @@ class Database:
 
     def media_in_use(self, media_id: str) -> bool:
         row = self._one(
-            "SELECT 1 AS used FROM jobs WHERE status IN ('queued', 'running')"
-            " AND json_extract(params, '$.target_media_id') = ? LIMIT 1",
-            (media_id,),
+            "SELECT 1 AS used FROM jobs WHERE status IN ('queued', 'running') AND ("
+            " json_extract(params, '$.target_media_id') = ?"
+            " OR json_extract(params, '$.source_face_id') IN (SELECT id FROM faces WHERE media_id = ?)"
+            ") LIMIT 1",
+            (media_id, media_id),
         )
         return row is not None

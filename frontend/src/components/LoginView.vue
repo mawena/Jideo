@@ -14,7 +14,7 @@ async function submit() {
     await api.login(password.value)
     emit('success')
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : String(e)
+    error.value = e instanceof ApiError ? e.message : 'Erreur inattendue'
   } finally {
     busy.value = false
   }

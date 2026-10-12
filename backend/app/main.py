@@ -49,7 +49,7 @@ def create_app(settings: Settings | None = None, *, engines=None, start_worker: 
             purger.stop()
             worker.stop()
 
-    app = FastAPI(title="Jideo", lifespan=lifespan)
+    app = FastAPI(title="Jideo", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db
     app.state.storage = storage

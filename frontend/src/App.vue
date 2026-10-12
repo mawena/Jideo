@@ -10,12 +10,13 @@ import { useJobs } from './composables/useJobs'
 const health = ref<Health | null>(null)
 const opened = ref<Job | null>(null)
 const bootError = ref<string | null>(null)
-const { refresh, connect } = useJobs()
+const { refresh, connect, disconnect } = useJobs()
 
 const locked = computed(() => !!health.value?.auth_required && !health.value.authenticated)
 
 setUnauthorizedHandler(() => {
   if (health.value) health.value.authenticated = false
+  disconnect()
 })
 
 async function boot() {
@@ -31,8 +32,11 @@ async function boot() {
 }
 
 async function logout() {
-  await api.logout()
-  location.reload()
+  try {
+    await api.logout()
+  } finally {
+    location.reload()
+  }
 }
 
 onMounted(boot)

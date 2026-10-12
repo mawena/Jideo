@@ -24,7 +24,7 @@ async function refresh() {
 }
 
 function connect() {
-  if (source) return
+  if (source && source.readyState !== EventSource.CLOSED) return
   source = new EventSource('/api/events')
   source.onmessage = (message) => {
     const event = JSON.parse(message.data)
@@ -39,6 +39,12 @@ function connect() {
   source.onerror = () => setTimeout(() => refresh().catch(() => {}), 2000)
 }
 
+// Un EventSource qui reçoit un 401 est fermé définitivement : on le libère pour pouvoir le recréer après reconnexion.
+function disconnect() {
+  source?.close()
+  source = null
+}
+
 export function useJobs() {
-  return { jobs, progress, refresh, connect, upsert, remove }
+  return { jobs, progress, refresh, connect, disconnect, upsert, remove }
 }
