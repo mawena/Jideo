@@ -142,7 +142,7 @@ async function run(type: JobType) {
         <DropZone label="Photo ou vidéo à modifier" :accept="`${PHOTO_ACCEPT},${VIDEO_ACCEPT}`" :busy="target.busy"
           testid="target-input" @file="upload(target, $event, true)" />
         <VideoTimeline v-if="target.media && isVideo" v-model:start="trim.start" v-model:end="trim.end"
-          :src="target.media.url" :duration="target.media.duration ?? 0" @pick="pickFrame" />
+          :src="target.media.url" :media-id="target.media.id" :duration="target.media.duration ?? 0" @pick="pickFrame" />
         <template v-if="target.media && target.detection">
           <p v-if="isVideo" class="text-xs text-zinc-400">
             Visages détectés à {{ target.detection.t.toFixed(1) }} s — les visages choisis seront suivis dans toute la vidéo.
@@ -159,7 +159,7 @@ async function run(type: JobType) {
       <h2 class="font-semibold">3. Options</h2>
       <label class="flex items-center gap-2 text-sm">
         <input v-model="options.enhance" type="checkbox" /> Améliorer le visage (GFPGAN)
-        <span v-if="isVideo" class="text-zinc-500">— environ 3 à 4 fois plus lent</span>
+        <span v-if="isVideo" class="text-zinc-500">— environ 2 à 2,5 fois plus lent</span>
       </label>
       <label class="flex items-center gap-2 text-sm">
         <input v-model="options.watermark" type="checkbox" /> Filigrane visible « Jideo »
