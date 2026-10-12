@@ -31,7 +31,7 @@ Usage : ./jideo <commande>
   install   crée .env, construit l'image, télécharge les modèles, démarre
   start     démarre Jideo
   stop      arrête Jideo
-  restart   redémarre Jideo
+  restart   recrée le conteneur (relit .env, sert l'image à jour)
   status    état du conteneur
   logs      suit les journaux
   shell     shell dans le conteneur
@@ -52,7 +52,7 @@ case "$cmd" in
     ;;
   start)   ensure_env; compose up -d; echo "✓ Jideo tourne sur $(url)" ;;
   stop)    compose down ;;
-  restart) compose restart ;;
+  restart) ensure_env; compose up -d --force-recreate; echo "✓ Jideo tourne sur $(url)" ;;
   status)  compose ps ;;
   logs)    compose logs -f jideo ;;
   shell)   compose exec jideo bash ;;

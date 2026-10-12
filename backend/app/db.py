@@ -198,3 +198,22 @@ class Database:
             (time.time(),),
         )
         return cursor.rowcount
+
+    # --- purge -------------------------------------------------------------
+
+    def jobs_created_before(self, ts: float) -> list[dict]:
+        rows = self._all(
+            "SELECT * FROM jobs WHERE created_at < ? AND status IN ('done', 'failed', 'cancelled')", (ts,)
+        )
+        return [self._job(r) for r in rows]
+
+    def media_created_before(self, ts: float) -> list[dict]:
+        return self._all("SELECT * FROM media WHERE created_at < ?", (ts,))
+
+    def media_in_use(self, media_id: str) -> bool:
+        row = self._one(
+            "SELECT 1 AS used FROM jobs WHERE status IN ('queued', 'running')"
+            " AND json_extract(params, '$.target_media_id') = ? LIMIT 1",
+            (media_id,),
+        )
+        return row is not None

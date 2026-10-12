@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import auth
 from app.api import events, jobs, media
 from app.config import Settings, load_settings
 from app.db import Database
@@ -18,6 +19,7 @@ from app.errors import UserError
 from app.jobs.events import EventBus
 from app.jobs.handlers import build_handlers
 from app.jobs.worker import Worker
+from app.purge import PurgeThread
 from app.storage import Storage
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -31,6 +33,7 @@ def create_app(settings: Settings | None = None, *, engines=None, start_worker: 
     engines = engines or EngineHolder(storage.models)
     bus = EventBus()
     worker = Worker(db, storage, bus, build_handlers(db, storage, engines, settings))
+    purger = PurgeThread(db, storage, settings.retention_days)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -39,9 +42,11 @@ def create_app(settings: Settings | None = None, *, engines=None, start_worker: 
         storage.clear_tmp()
         if start_worker:
             worker.start()
+            purger.start()
         try:
             yield
         finally:
+            purger.stop()
             worker.stop()
 
     app = FastAPI(title="Jideo", lifespan=lifespan)
@@ -56,10 +61,18 @@ def create_app(settings: Settings | None = None, *, engines=None, start_worker: 
     async def user_error(request: Request, exc: UserError) -> JSONResponse:
         return JSONResponse({"detail": exc.message}, status_code=exc.status_code)
 
-    @app.get("/api/health")
-    def health() -> dict:
-        return {"status": "ok", "models_ready": engines.ready(), "auth_required": settings.auth_required}
+    app.middleware("http")(auth.auth_middleware)
 
+    @app.get("/api/health")
+    def health(request: Request) -> dict:
+        return {
+            "status": "ok",
+            "models_ready": engines.ready(),
+            "auth_required": settings.auth_required,
+            "authenticated": auth.is_authenticated(request),
+        }
+
+    app.include_router(auth.router)
     app.include_router(media.router)
     app.include_router(jobs.router)
     app.include_router(events.router)

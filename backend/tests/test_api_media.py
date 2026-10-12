@@ -97,4 +97,4 @@ def test_delete_media(make_client):
 
 def test_health_reports_models(make_client):
     body = make_client(engines=FakeEngineHolder(ready=False)).get("/api/health").json()
-    assert body == {"status": "ok", "models_ready": False, "auth_required": False}
+    assert body == {"status": "ok", "models_ready": False, "auth_required": False, "authenticated": True}
