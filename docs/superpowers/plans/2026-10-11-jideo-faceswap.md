@@ -10,6 +10,39 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-11-jideo-faceswap-design.md`
 
+## Progression
+
+Mise à jour au fil de l'exécution (branche `feat/jideo-v1`). Chaque tâche cochée a été implémentée, testée, relue et, si besoin, corrigée avant d'être validée.
+
+- [x] Task 1 : socle Docker + FastAPI + configuration
+- [x] Task 2 : erreurs, base SQLite et stockage
+- [x] Task 3 : téléchargement et vérification des modèles
+- [x] Task 4 : détection des visages et swap
+- [x] Task 5 : amélioration GFPGAN et marquage
+- [x] Task 6 : pipeline de swap, moteur partagé et CLI
+- [x] Task 7 : traitement vidéo en flux (ffmpeg)
+- [x] Task 8 : file de tâches, événements et handlers
+- [x] Task 9 : application complète + API des médias et des visages
+- [x] Task 10 : API des tâches et flux SSE
+- [x] Task 11 : frontend — atelier photo et historique
+- [x] Task 12 : frontend — vidéo
+- [x] Task 13 : mot de passe hors localhost et purge automatique
+- [x] Task 14 : test de bout en bout, README et finitions
+- [x] Revue finale de toute la branche (verdict : prête avec corrections — 0 critique, 4 importants)
+- [ ] Corrections de la revue finale
+  - [ ] 1. Aucun appel réseau sortant (albumentations interroge pypi.org à l'import)
+  - [ ] 2. Timeline vidéo utilisable même si le navigateur ne lit pas la vidéo (HEVC d'iPhone sous Linux)
+  - [ ] 3. Anti-bruteforce efficace face aux requêtes parallèles
+  - [ ] 4. Chiffres de performance mesurés (README, interface, spec §4.6)
+  - [ ] 5. README : `JIDEO_SECRET` documenté + conseil reverse proxy TLS
+  - [ ] 6. Pas de double détection (repli avec bordure) sur les images de vidéo et d'aperçu
+  - [ ] 7. Progression vidéo publiée au moins toutes les ~2 s
+  - [ ] 8. `./jideo` : lecture de `.env` sans `source`
+  - [ ] 9. Upload : nettoyage et message français sur toute erreur
+  - [ ] Vérification complète : tous les tests (y compris lents), build frontend, test de bout en bout
+- [ ] Re-relecture des corrections
+- [ ] Bilan final et choix de l'intégration de la branche
+
 ## Global Constraints
 
 - Port **4545** ; écoute hôte `JIDEO_BIND=127.0.0.1` par défaut ; toute autre adresse exige `JIDEO_PASSWORD` (sinon refus de démarrer) et `JIDEO_SECRET` ≥ 32 caractères.
@@ -98,7 +131,7 @@ frontend/
 **Interfaces:**
 - Produces: `Settings` (dataclass figée : `data_dir, bind, password, secret, max_photo_mb, max_video_mb, max_video_seconds, retention_days, max_photo_side, min_free_gb` ; propriétés `auth_required: bool`, `db_path: Path`), `load_settings(env: Mapping[str, str] | None = None) -> Settings`, `ConfigError`, `create_app(settings: Settings | None = None) -> FastAPI`, fixture pytest `settings`.
 
-- [ ] **Step 1 : fichiers d'infrastructure**
+- [x] **Step 1 : fichiers d'infrastructure**
 
 `backend/requirements.txt` :
 ```
@@ -254,7 +287,7 @@ case "$cmd" in
 esac
 ```
 
-- [ ] **Step 2 : écrire les tests qui échouent**
+- [x] **Step 2 : écrire les tests qui échouent**
 
 `backend/tests/__init__.py` : fichier vide.
 
@@ -325,12 +358,12 @@ def test_health(settings):
     assert response.json()["status"] == "ok"
 ```
 
-- [ ] **Step 3 : construire l'image et vérifier l'échec**
+- [x] **Step 3 : construire l'image et vérifier l'échec**
 
 Run: `./jideo build && ./jideo test -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.config'`
 
-- [ ] **Step 4 : implémenter**
+- [x] **Step 4 : implémenter**
 
 `backend/app/__init__.py` : fichier vide.
 
@@ -435,7 +468,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return app
 ```
 
-- [ ] **Step 5 : vérifier**
+- [x] **Step 5 : vérifier**
 
 Run: `./jideo test -v`
 Expected: 6 passed.
@@ -443,7 +476,7 @@ Expected: 6 passed.
 Run: `./jideo start && sleep 3 && curl -s http://127.0.0.1:4545/api/health`
 Expected: `{"status":"ok"}`
 
-- [ ] **Step 6 : commit**
+- [x] **Step 6 : commit**
 
 ```bash
 git add Dockerfile docker-compose.yml .env.example .dockerignore jideo backend
@@ -466,7 +499,7 @@ git commit -m "feat: socle Docker + FastAPI sur le port 4545"
   - `Storage(data_dir)` avec attributs `root, uploads, results, tmp, models` et `upload_path(media_id, ext)`, `thumbnail_path(media_id)`, `result_path(job_id, ext)`, `job_tmp_dir(job_id)`, `clear_job_tmp(job_id)`, `clear_tmp()`, `save_stream(src, dest, max_bytes) -> int`, `delete(*paths)`, `free_bytes() -> int`.
   - Fixtures pytest `db`, `storage`.
 
-- [ ] **Step 1 : fixtures et tests qui échouent**
+- [x] **Step 1 : fixtures et tests qui échouent**
 
 Ajouter à la fin de `backend/tests/conftest.py` :
 ```python
@@ -611,12 +644,12 @@ def test_job_tmp_lifecycle(storage):
     assert list(storage.tmp.iterdir()) == []
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_db.py tests/test_storage.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.storage'` / `app.db`
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/errors.py` :
 ```python
@@ -937,12 +970,12 @@ class Storage:
         return shutil.disk_usage(self.root).free
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test -v`
 Expected: tous PASS (18 tests).
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -961,7 +994,7 @@ git commit -m "feat: base SQLite, stockage et erreurs métier"
 **Interfaces:**
 - Produces : `ModelSpec(name, url, sha256, required_files: tuple[str, ...], extract_to: str | None = None)`, `MODEL_SPECS`, `ModelChecksumError`, `sha256_of(path) -> str`, `missing_models(models_dir, specs=MODEL_SPECS) -> list[str]` (noms des modèles manquants), `download_model(spec, models_dir, *, log=print) -> str` (renvoie le SHA-256), `main(argv=None) -> int` (CLI `python -m app.engine.models download|check`).
 
-- [ ] **Step 1 : tests qui échouent**
+- [x] **Step 1 : tests qui échouent**
 
 `backend/tests/test_models.py` :
 ```python
@@ -1022,12 +1055,12 @@ def test_download_zip_is_extracted_and_flattened(tmp_path):
     assert not list((tmp_path / "models").glob("*.download"))
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_models.py -v`
 Expected: FAIL — `ImportError` sur `app.engine`.
 
-- [ ] **Step 3 : implémenter (SHA-256 encore vides)**
+- [x] **Step 3 : implémenter (SHA-256 encore vides)**
 
 `backend/app/engine/__init__.py` : fichier vide (complété en Task 6).
 
@@ -1159,19 +1192,19 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 4 : seuls les tests de checksum figé échouent**
+- [x] **Step 4 : seuls les tests de checksum figé échouent**
 
 Run: `./jideo test tests/test_models.py -v`
 Expected: 4 passed, 1 failed (`test_all_models_have_pinned_checksums`).
 
-- [ ] **Step 5 : télécharger les modèles et figer les SHA-256**
+- [x] **Step 5 : télécharger les modèles et figer les SHA-256**
 
 Run: `./jideo build && docker compose run --rm --no-deps jideo python -m app.engine.models download`
 Expected : trois lignes `✓ <nom> (sha256 <64 hex>)`. Si une URL ne répond plus, s'arrêter et signaler le modèle concerné à l'utilisateur (ne pas choisir un autre miroir sans son accord).
 
 Copier chaque SHA-256 affiché dans le champ `sha256=""` correspondant de `MODEL_SPECS`.
 
-- [ ] **Step 6 : brancher l'installation**
+- [x] **Step 6 : brancher l'installation**
 
 Dans `jideo`, bloc `install)`, remplacer :
 ```bash
@@ -1185,12 +1218,12 @@ par :
     compose up -d
 ```
 
-- [ ] **Step 7 : vérifier**
+- [x] **Step 7 : vérifier**
 
 Run: `./jideo test tests/test_models.py -v && docker compose run --rm --no-deps jideo python -m app.engine.models check`
 Expected: 5 passed ; `✓ Tous les modèles sont présents`.
 
-- [ ] **Step 8 : commit**
+- [x] **Step 8 : commit**
 
 ```bash
 git add jideo backend
@@ -1215,7 +1248,7 @@ git commit -m "feat(engine): téléchargement et vérification des modèles"
   - `FaceSwapper(model_path: Path)` → `.swap(img_bgr, target: DetectedFace, source_embedding: np.ndarray) -> np.ndarray`.
   - Fixtures pytest `models_dir`, `detector`, `swapper`, `group_img` (photo de groupe InsightFace `t1`), `source_img` (`Tom_Hanks_54745`).
 
-- [ ] **Step 1 : fixtures et tests (marqués slow)**
+- [x] **Step 1 : fixtures et tests (marqués slow)**
 
 Ajouter à la fin de `backend/tests/conftest.py` :
 ```python
@@ -1301,12 +1334,12 @@ def test_swap_puts_source_identity_on_target(detector, swapper, group_img, sourc
     assert similarity(swapped.embedding, source.embedding) > before + 0.2
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_engine_faces.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.engine.detector'`
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/engine/detector.py` :
 ```python
@@ -1386,12 +1419,12 @@ class FaceSwapper:
         )
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test tests/test_engine_faces.py -v`
 Expected: 3 passed (les modèles ont été téléchargés en Task 3).
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -1410,7 +1443,7 @@ git commit -m "feat(engine): détection des visages et swap inswapper"
 - Consumes : `DetectedFace` (Task 4), fixtures `models_dir`, `detector`, `group_img` (Task 4).
 - Produces : `FaceEnhancer(model_path: Path, blend: float = 0.8)` → `.enhance(img_bgr, face: DetectedFace) -> np.ndarray` ; `AI_NOTICE = "AI-generated by Jideo"` ; `add_visible_watermark(img_bgr) -> np.ndarray` ; `save_image(img_bgr, path: Path) -> None` (format selon l'extension `.jpg/.png/.webp`, métadonnée `AI_NOTICE` toujours écrite).
 
-- [ ] **Step 1 : tests qui échouent**
+- [x] **Step 1 : tests qui échouent**
 
 `backend/tests/test_watermark.py` :
 ```python
@@ -1472,12 +1505,12 @@ def test_enhance_changes_face_region_only(models_dir, detector, group_img):
     assert np.array_equal(out[far], group_img[far])
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_watermark.py tests/test_enhancer.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.engine.watermark'`
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/engine/watermark.py` :
 ```python
@@ -1575,12 +1608,12 @@ class FaceEnhancer:
         return _paste_back(img, restored, matrix, self._blend)
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test tests/test_watermark.py tests/test_enhancer.py -v`
 Expected: 5 passed.
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -1606,7 +1639,7 @@ git commit -m "feat(engine): amélioration GFPGAN, filigrane et métadonnée IA"
   - `EngineHolder(models_dir, loader=Engine.load)` → `.ready() -> bool`, `.get() -> Engine` (charge une fois ; lève `ModelsMissing`).
   - `tests/fakes.py` : `unit(seed) -> np.ndarray`, `make_face(x, seed) -> DetectedFace`, `encode_image(w=64, h=48, ext=".png") -> bytes`, `FakeDetector(faces=None)`, `FakePipeline(swapped=1)` (attribut `calls`), `FakeEngine(detector=None, pipeline=None)`, `FakeEngineHolder(engine=None, ready=True)`.
 
-- [ ] **Step 1 : doublures de test**
+- [x] **Step 1 : doublures de test**
 
 `backend/tests/fakes.py` :
 ```python
@@ -1678,7 +1711,7 @@ class FakeEngineHolder:
         return self.engine
 ```
 
-- [ ] **Step 2 : tests qui échouent**
+- [x] **Step 2 : tests qui échouent**
 
 `backend/tests/test_pipeline.py` :
 ```python
@@ -1770,12 +1803,12 @@ def test_real_pipeline_swaps_every_face(models_dir, detector, group_img, source_
     assert result.image.shape == group_img.shape
 ```
 
-- [ ] **Step 3 : vérifier l'échec**
+- [x] **Step 3 : vérifier l'échec**
 
 Run: `./jideo test tests/test_pipeline.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.engine.pipeline'`
 
-- [ ] **Step 4 : implémenter**
+- [x] **Step 4 : implémenter**
 
 `backend/app/engine/pipeline.py` :
 ```python
@@ -1930,7 +1963,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 5 : vérifier**
+- [x] **Step 5 : vérifier**
 
 Run: `./jideo test tests/test_pipeline.py -v`
 Expected: 7 passed.
@@ -1943,7 +1976,7 @@ python -m app.engine.cli --source /data/tmp/src.png --target /data/tmp/grp.jpg -
 ```
 Expected : `✓ 6 visage(s) remplacé(s) → /data/tmp/out.jpg` ; ouvrir `data/tmp/out.jpg` et vérifier visuellement le résultat.
 
-- [ ] **Step 6 : commit**
+- [x] **Step 6 : commit**
 
 ```bash
 git add backend
@@ -1970,7 +2003,7 @@ git commit -m "feat(engine): pipeline de swap photo, moteur partagé et CLI"
   - `process_video(src, dst, frame_fn, *, start=0.0, end=None, downscale_720p=False, tmp_dir, on_progress, should_cancel, notice=AI_NOTICE) -> VideoStats` ; `frame_fn(frame) -> tuple[np.ndarray, bool]` (image traitée, visage trouvé) ; `on_progress(done, total, fps)` ; lève `Cancelled` si `should_cancel()` devient vrai.
   - Fixtures pytest `sample_video` (320×240, 10 i/s, 2 s, audio AAC) et `make_video(name, *ffmpeg_args) -> Path`.
 
-- [ ] **Step 1 : fixtures et tests qui échouent**
+- [x] **Step 1 : fixtures et tests qui échouent**
 
 Ajouter à la fin de `backend/tests/conftest.py` :
 ```python
@@ -2162,12 +2195,12 @@ def test_odd_dimensions_are_made_even(make_video, tmp_path):
     assert (probe(dst).width, probe(dst).height) == (320, 240)
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_video.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.engine.video'`
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/engine/video.py` :
 ```python
@@ -2367,12 +2400,12 @@ def process_video(
     return VideoStats(frames_total=done, frames_with_face=matched)
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test tests/test_video.py -v`
 Expected: 17 passed. Si `test_rotated_video_is_handled_upright` échoue parce que l'ffmpeg de l'image n'écrit pas la rotation (`probe` voit 320×240 dès la création), remplacer dans le test `"-metadata:s:v:0", "rotate=90"` par `"-display_rotation:v:0", "90"` placé **avant** `"-i"` (syntaxe ffmpeg ≥ 6) — ne pas supprimer le test.
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -2397,7 +2430,7 @@ git commit -m "feat(engine): traitement vidéo en flux avec audio, découpage et
   - `Worker(db, storage, bus, handlers)` → `start()`, `stop()`, `wake()`, `cancel(job_id) -> bool`, `run_once() -> bool`.
   - `build_handlers(db, storage, engines, settings) -> dict[str, Handler]` avec les clés `photo`, `preview`, `video`. Paramètres attendus d'une tâche : `source_face_id, target_media_id, target_face_ids ("all" | list[str]), enhance, watermark, similarity_threshold, t, trim ({"start", "end"} | None), downscale_720p`.
 
-- [ ] **Step 1 : tests qui échouent**
+- [x] **Step 1 : tests qui échouent**
 
 `backend/tests/test_events.py` :
 ```python
@@ -2673,12 +2706,12 @@ def test_video_handler_refuses_when_disk_is_low(db, storage, settings, video, mo
         build_handlers(db, storage, FakeEngineHolder(), settings)["video"](ctx)
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_events.py tests/test_worker.py tests/test_handlers.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.jobs'`
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/jobs/__init__.py` : fichier vide.
 
@@ -3010,12 +3043,12 @@ def build_handlers(db, storage, engines, settings) -> dict[str, Handler]:
     return {"photo": photo, "preview": preview, "video": video}
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test -m "not slow" -v`
 Expected: tous PASS.
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -3042,7 +3075,7 @@ git commit -m "feat(jobs): file SQLite, worker unique, événements et traitemen
   - `inspect_photo(path, max_side) -> {"width", "height"}` ; `inspect_video(path, thumbnail) -> {"width", "height", "duration", "fps", "has_audio"}` (lèvent `UnsupportedMedia`).
   - Fixture `make_client(engines=None, **settings_overrides) -> TestClient`.
 
-- [ ] **Step 1 : fixture et tests qui échouent**
+- [x] **Step 1 : fixture et tests qui échouent**
 
 Ajouter à la fin de `backend/tests/conftest.py` :
 ```python
@@ -3177,12 +3210,12 @@ def test_health_reports_models(make_client):
     assert body == {"status": "ok", "models_ready": False, "auth_required": False}
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_api_media.py -v`
 Expected: FAIL — `TypeError: create_app() got an unexpected keyword argument 'engines'`
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/media_info.py` :
 ```python
@@ -3438,12 +3471,12 @@ def create_app(settings: Settings | None = None, *, engines=None, start_worker: 
     return app
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test -m "not slow" -v`
 Expected: tous PASS (dont `test_health` de la Task 1, inchangé).
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -3466,7 +3499,7 @@ git commit -m "feat(api): application complète, upload des médias et détectio
   - `GET /api/jobs?limit&offset` → `{"items": [...]}` ; `GET /api/jobs/{id}` ; `POST /api/jobs/{id}/cancel` (409 si terminée) ; `POST /api/jobs/{id}/retry` (201, seulement `failed`/`cancelled`) ; `DELETE /api/jobs/{id}` (204, 409 si `queued`/`running`) ; `GET /api/jobs/{id}/result`.
   - `GET /api/events` (SSE, une ligne `data: <json>` par événement, commentaire `: ping` toutes les 15 s) ; `event_stream(bus, is_disconnected, ping_interval=15.0)` (générateur asynchrone).
 
-- [ ] **Step 1 : tests qui échouent**
+- [x] **Step 1 : tests qui échouent**
 
 `backend/tests/test_api_jobs.py` :
 ```python
@@ -3636,12 +3669,12 @@ def test_event_stream_relays_events_and_pings():
     asyncio.run(scenario())
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_api_jobs.py tests/test_api_events.py -v`
 Expected: FAIL — 404 sur `/api/jobs` et `ModuleNotFoundError: app.api.events`.
 
-- [ ] **Step 3 : implémenter**
+- [x] **Step 3 : implémenter**
 
 `backend/app/api/jobs.py` :
 ```python
@@ -3849,7 +3882,7 @@ par :
     app.include_router(events.router)
 ```
 
-- [ ] **Step 4 : vérifier**
+- [x] **Step 4 : vérifier**
 
 Run: `./jideo test -m "not slow" -v`
 Expected: tous PASS.
@@ -3866,7 +3899,7 @@ sleep 10 && curl -s "http://127.0.0.1:4545/api/jobs?limit=1"
 ```
 Expected : la dernière tâche est `"status": "done"` avec un `result_url` qui renvoie l'image modifiée.
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add backend
@@ -3889,7 +3922,7 @@ git commit -m "feat(api): tâches (création, annulation, relance, résultat) et
 
 Pas de tests unitaires frontend (la spec prévoit un seul E2E, Task 14) : la vérification passe par `vue-tsc`, le build et un essai manuel.
 
-- [ ] **Step 1 : configuration**
+- [x] **Step 1 : configuration**
 
 `frontend/package.json` :
 ```json
@@ -3999,7 +4032,7 @@ frontend/playwright-report/
 frontend/e2e/fixtures/
 ```
 
-- [ ] **Step 2 : client API et état des tâches**
+- [x] **Step 2 : client API et état des tâches**
 
 `frontend/src/api.ts` :
 ```ts
@@ -4169,7 +4202,7 @@ export function useJobs() {
 }
 ```
 
-- [ ] **Step 3 : composants**
+- [x] **Step 3 : composants**
 
 `frontend/src/components/DropZone.vue` :
 ```vue
@@ -4580,12 +4613,12 @@ onMounted(async () => {
 </template>
 ```
 
-- [ ] **Step 4 : installer, vérifier les types et construire**
+- [x] **Step 4 : installer, vérifier les types et construire**
 
 Run: `cd frontend && npm install && npm run typecheck && npm run build`
 Expected : aucune erreur de type ; `frontend/dist/index.html` créé.
 
-- [ ] **Step 5 : intégrer le build au Dockerfile**
+- [x] **Step 5 : intégrer le build au Dockerfile**
 
 Dans `Dockerfile`, ajouter en tête :
 ```dockerfile
@@ -4602,7 +4635,7 @@ et, juste après la ligne `COPY backend/ ./`, ajouter :
 COPY --from=frontend /frontend/dist ./static
 ```
 
-- [ ] **Step 6 : vérifier dans le navigateur**
+- [x] **Step 6 : vérifier dans le navigateur**
 
 Run: `./jideo build && ./jideo restart`
 Ouvrir `http://127.0.0.1:4545` et vérifier :
@@ -4612,7 +4645,7 @@ Ouvrir `http://127.0.0.1:4545` et vérifier :
 4. « Voir » → le curseur avant/après fonctionne ; « Télécharger » récupère l'image.
 5. Déposer un `.txt` renommé en `.jpg` → message d'erreur rouge en français.
 
-- [ ] **Step 7 : commit**
+- [x] **Step 7 : commit**
 
 ```bash
 git add .gitignore Dockerfile frontend
@@ -4631,7 +4664,7 @@ git commit -m "feat(ui): atelier photo, sélection des visages, historique en di
 - Consumes : `api.frameUrl`, `api.detectFaces(id, t)`, `api.createJob` avec `type: 'preview' | 'video'`, `t`, `trim`, `downscale_720p`, `similarity_threshold` (Tasks 9, 10, 11).
 - Produces : `VideoTimeline` (props `src, duration, start, end` ; événements `pick(t)`, `update:start`, `update:end`) ; nouveaux `data-testid` : `pick-frame`, `preview`.
 
-- [ ] **Step 1 : composant de timeline**
+- [x] **Step 1 : composant de timeline**
 
 `frontend/src/components/VideoTimeline.vue` :
 ```vue
@@ -4669,7 +4702,7 @@ function format(seconds: number) {
 </template>
 ```
 
-- [ ] **Step 2 : atelier photo + vidéo**
+- [x] **Step 2 : atelier photo + vidéo**
 
 `frontend/src/components/Workshop.vue` (remplacement complet) :
 ```vue
@@ -4846,12 +4879,12 @@ async function run(type: JobType) {
 </template>
 ```
 
-- [ ] **Step 3 : vérifier les types et construire**
+- [x] **Step 3 : vérifier les types et construire**
 
 Run: `cd frontend && npm run typecheck && npm run build`
 Expected : aucune erreur.
 
-- [ ] **Step 4 : vérifier dans le navigateur**
+- [x] **Step 4 : vérifier dans le navigateur**
 
 Préparer une vidéo de test (5 s, photo de groupe animée par un zoom, avec son) :
 ```bash
@@ -4866,7 +4899,7 @@ Run: `./jideo build && ./jideo restart`, puis sur `http://127.0.0.1:4545` :
 4. « Début ici » / « Fin ici » sur ~2 s, « Lancer le rendu vidéo » → barre de progression, images/s et temps restant mis à jour en direct.
 5. « Annuler » pendant le rendu → « Annulé » ; « Relancer » → nouvelle tâche, qui aboutit ; « Voir » lit la vidéo **avec le son**.
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add frontend
@@ -4890,7 +4923,7 @@ git commit -m "feat(ui): vidéo — choix de l'image, découpage, aperçu, rendu
   - `Database.jobs_created_before(ts)`, `Database.media_created_before(ts)`, `Database.media_in_use(media_id) -> bool`.
   - `purge(db, storage, retention_days, *, now=None) -> {"jobs": int, "media": int}` ; `PurgeThread(db, storage, retention_days, interval_s=6 * 3600)` avec `start()` / `stop()`.
 
-- [ ] **Step 1 : tests qui échouent**
+- [x] **Step 1 : tests qui échouent**
 
 `backend/tests/test_auth.py` :
 ```python
@@ -4976,12 +5009,12 @@ def test_zero_retention_disables_purge(db, storage):
     assert purge(db, storage, 0, now=LATER) == {"jobs": 0, "media": 0}
 ```
 
-- [ ] **Step 2 : vérifier l'échec**
+- [x] **Step 2 : vérifier l'échec**
 
 Run: `./jideo test tests/test_auth.py tests/test_purge.py -v`
 Expected: FAIL — `ImportError: cannot import name 'auth' from 'app'` / `No module named 'app.purge'`.
 
-- [ ] **Step 3 : implémenter le backend**
+- [x] **Step 3 : implémenter le backend**
 
 Ajouter à la fin de la classe `Database` dans `backend/app/db.py` :
 ```python
@@ -5216,12 +5249,12 @@ Dans `backend/tests/test_api_media.py`, `test_health_reports_models` attend dés
     assert body == {"status": "ok", "models_ready": False, "auth_required": False, "authenticated": True}
 ```
 
-- [ ] **Step 4 : vérifier le backend**
+- [x] **Step 4 : vérifier le backend**
 
 Run: `./jideo test -m "not slow" -v`
 Expected: tous PASS.
 
-- [ ] **Step 5 : écran de connexion**
+- [x] **Step 5 : écran de connexion**
 
 `frontend/src/components/LoginView.vue` :
 ```vue
@@ -5327,14 +5360,14 @@ onMounted(boot)
 </template>
 ```
 
-- [ ] **Step 6 : vérifier**
+- [x] **Step 6 : vérifier**
 
 Run: `cd frontend && npm run typecheck && npm run build`
 Expected : aucune erreur.
 
 Vérification manuelle du mode réseau : dans `.env`, mettre `JIDEO_BIND=0.0.0.0` **sans** mot de passe puis `./jideo restart && ./jideo logs` → le conteneur refuse de démarrer avec le message `JIDEO_BIND=0.0.0.0 expose Jideo au réseau : définissez JIDEO_PASSWORD dans .env`. Ajouter `JIDEO_PASSWORD=essai`, `./jideo build && ./jideo restart`, ouvrir `http://localhost:4545` → écran de connexion ; après connexion, l'atelier et l'historique en direct fonctionnent. **Remettre `JIDEO_BIND=127.0.0.1` et vider `JIDEO_PASSWORD` ensuite.**
 
-- [ ] **Step 7 : commit**
+- [x] **Step 7 : commit**
 
 ```bash
 git add backend frontend
@@ -5353,7 +5386,7 @@ git commit -m "feat: mot de passe obligatoire hors localhost et purge automatiqu
 - Consumes : l'application complète qui tourne sur `http://127.0.0.1:4545` avec les modèles ; `data-testid` des Tasks 11 et 12.
 - Produces : `./jideo e2e` (prépare les fixtures puis lance Playwright).
 
-- [ ] **Step 1 : configuration et scénario E2E**
+- [x] **Step 1 : configuration et scénario E2E**
 
 `frontend/playwright.config.ts` :
 ```ts
@@ -5407,7 +5440,7 @@ test('aperçu sur une image de vidéo', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 2 : commande `./jideo e2e`**
+- [x] **Step 2 : commande `./jideo e2e`**
 
 Dans `jideo`, ajouter dans le `case`, avant `help)` :
 ```bash
@@ -5425,12 +5458,12 @@ et, dans `usage`, la ligne :
   e2e       test de bout en bout (Jideo doit tourner, modèles installés)
 ```
 
-- [ ] **Step 3 : lancer l'E2E**
+- [x] **Step 3 : lancer l'E2E**
 
 Run: `./jideo build && ./jideo restart && ./jideo e2e`
 Expected: `2 passed`.
 
-- [ ] **Step 4 : README**
+- [x] **Step 4 : README**
 
 `README.md` :
 ````markdown
@@ -5488,12 +5521,12 @@ La commande crée `.env`, construit l'image, télécharge les modèles (~1,2 Go,
 - Plan d'implémentation : `docs/superpowers/plans/2026-10-11-jideo-faceswap.md`
 ````
 
-- [ ] **Step 5 : vérification finale complète**
+- [x] **Step 5 : vérification finale complète**
 
 Run: `./jideo test -v && ./jideo e2e`
 Expected : tous les tests backend PASS (y compris `slow`), `2 passed` pour l'E2E.
 
-- [ ] **Step 6 : commit**
+- [x] **Step 6 : commit**
 
 ```bash
 git add jideo README.md frontend

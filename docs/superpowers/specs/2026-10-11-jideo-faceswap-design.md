@@ -214,6 +214,13 @@ Worker :
   30 fps (900 images) ≈ 8–15 min sans, 30–50 min avec.
 - Par défaut en vidéo : amélioration **désactivée** ; option « réduire à
   720p » proposée pour les sources de plus haute résolution.
+- Mesuré le 2026-10-12 sur CPU portable 15 W (Intel Core Ultra 7 155U) :
+  photo 1 visage ~1,5 s sans amélioration, ~3,5 s avec ; photo de groupe
+  6 visages avec amélioration ~30 s ; vidéo 1 visage ~0,67 image/s sans
+  amélioration (~1,5 s par image, 720p–1080p), ~0,3 image/s avec (ex. 10 s à
+  30 i/s ≈ 7–8 min sans) ; l'option 720p n'aide qu'au-delà de 1080p. Le coût
+  croît à peu près proportionnellement au nombre de visages. L'estimation
+  initiale de 1–2 img/s supposait un CPU de bureau.
 
 ## 5. Erreurs, limites et garde-fous
 

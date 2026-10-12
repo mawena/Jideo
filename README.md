@@ -30,20 +30,24 @@ La commande crée `.env`, construit l'image, télécharge les modèles (~1,2 Go,
 |---|---|---|
 | `JIDEO_BIND` | `127.0.0.1` | adresse d'écoute ; toute autre valeur exige `JIDEO_PASSWORD` |
 | `JIDEO_PASSWORD` | vide | mot de passe de l'interface hors localhost |
+| `JIDEO_SECRET` | généré | généré par `./jideo install`, ≥ 32 caractères ; le changer déconnecte toutes les sessions |
 | `JIDEO_MAX_PHOTO_MB` / `JIDEO_MAX_VIDEO_MB` | 25 / 1024 | taille maximale des fichiers |
 | `JIDEO_MAX_VIDEO_SECONDS` | 300 | durée maximale **traitée** (après découpage) |
 | `JIDEO_RETENTION_DAYS` | 30 | suppression automatique des fichiers (0 = jamais) |
 
+Avant toute exposition hors du réseau local, placez Jideo derrière un reverse proxy TLS (HTTPS) : le mot de passe
+et le cookie de session ne sont pas chiffrés par Jideo lui-même.
+
 ## Performances (CPU)
 
-Les durées dépendent du processeur et du nombre de visages. Mesures sur la machine de développement :
+Les durées dépendent du processeur et augmentent avec le nombre de visages (coût à peu près proportionnel).
+Mesures sur un CPU de portable (Intel Core Ultra 7 155U, 15 W) :
 
-- Photo : environ 28 s pour une photo de groupe de 6 visages avec amélioration (GFPGAN) ; l'amélioration
-  représente l'essentiel du temps, un visage seul est bien plus rapide.
-- Aperçu d'une image de vidéo (un visage) : environ 4 s.
-- Vidéo : environ 60 s pour un extrait de 1 s en 640x426 à 15 images/s, soit de l'ordre de 4 s par image (environ
-  0,25 image/s) à cette taille. Une vidéo de 30 s à 15 images/s prend donc plusieurs dizaines de minutes,
-  davantage avec l'amélioration ou en haute résolution. L'option « Réduire à 720p » accélère le rendu.
+- Photo, 1 visage : environ 1,5 s sans amélioration, environ 3,5 s avec (GFPGAN) ; photo de groupe de
+  6 visages avec amélioration : environ 30 s.
+- Vidéo, 1 visage : environ 0,67 image/s sans amélioration (soit environ 1,5 s par image, en 720p–1080p),
+  environ 0,3 image/s avec. Exemple : 10 s à 30 images/s (300 images) ≈ 7–8 min sans amélioration.
+- L'option « Réduire à 720p » n'aide qu'au-delà de 1080p.
 
 ## Licences et usage responsable
 
