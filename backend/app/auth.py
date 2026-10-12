@@ -16,6 +16,15 @@ LOGIN_FAILURE_DELAY = 1.0  # ralentit les essais de mot de passe
 PUBLIC_PATHS = {"/api/health", "/api/login", "/api/logout"}
 
 router = APIRouter()
+_failure_lock: asyncio.Lock | None = None
+
+
+def _lock() -> asyncio.Lock:
+    # Créé à la demande : un verrou créé à l'import serait lié à une autre boucle d'événements.
+    global _failure_lock
+    if _failure_lock is None:
+        _failure_lock = asyncio.Lock()
+    return _failure_lock
 
 
 def _serializer(settings) -> URLSafeTimedSerializer:
@@ -55,7 +64,8 @@ async def login(body: Login, request: Request) -> Response:
     if not settings.auth_required:
         return Response(status_code=204)
     if not hmac.compare_digest(body.password.encode(), settings.password.encode()):
-        await asyncio.sleep(LOGIN_FAILURE_DELAY)
+        async with _lock():  # sérialise les échecs : ≈ 1 essai raté par délai, même en parallèle
+            await asyncio.sleep(LOGIN_FAILURE_DELAY)
         return JSONResponse({"detail": "Mot de passe incorrect"}, status_code=401)
     response = Response(status_code=204)
     response.set_cookie(

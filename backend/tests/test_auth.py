@@ -46,3 +46,32 @@ def test_session_is_invalidated_by_password_change(make_client, monkeypatch):
     second = make_client(bind="0.0.0.0", password="nouveau", secret="s" * 32)
     second.cookies.set("jideo_session", cookie)
     assert second.get("/api/jobs").status_code == 401
+
+
+def test_parallel_failures_are_serialized(make_client, monkeypatch):
+    import asyncio
+    import time
+
+    import httpx
+
+    monkeypatch.setattr(auth, "LOGIN_FAILURE_DELAY", 0.2)
+    monkeypatch.setattr(auth, "_failure_lock", None)
+    app = make_client(bind="0.0.0.0", password="mot-de-passe", secret="s" * 32).app
+
+    async def attempt(client, password):
+        return await client.post("/api/login", json={"password": password})
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            started = time.monotonic()
+            wrong = await asyncio.gather(*(attempt(client, "faux") for _ in range(5)))
+            failures = time.monotonic() - started
+            started = time.monotonic()
+            good = await attempt(client, "mot-de-passe")
+            return wrong, failures, good, time.monotonic() - started
+
+    wrong, failures, good, good_time = asyncio.run(scenario())
+    assert all(r.status_code == 401 for r in wrong)
+    assert failures >= 0.9
+    assert good.status_code == 204 and good_time < 0.15
