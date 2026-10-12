@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-defineProps<{ label: string; accept: string; busy?: boolean; testid?: string }>()
+const props = defineProps<{ label: string; accept: string; busy?: boolean; testid?: string }>()
 const emit = defineEmits<{ file: [File] }>()
 const over = ref(false)
 
 function onDrop(event: DragEvent) {
   over.value = false
+  if (props.busy) return
   const file = event.dataTransfer?.files[0]
   if (file) emit('file', file)
 }

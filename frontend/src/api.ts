@@ -85,7 +85,12 @@ export function setUnauthorizedHandler(fn: () => void) {
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
+  let res: Response
+  try {
+    res = await fetch(url, init)
+  } catch {
+    throw new ApiError(0, 'Serveur injoignable.')
+  }
   if (res.status === 401) onUnauthorized?.()
   if (res.status === 204) return undefined as T
   const body = await res.json().catch(() => ({}))

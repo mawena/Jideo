@@ -5,10 +5,13 @@ const jobs = ref<Job[]>([])
 const progress = reactive<Record<string, ProgressEvent>>({})
 let source: EventSource | null = null
 
+// Un statut ne régresse jamais : la réponse du POST (en attente) peut arriver après l'événement SSE « started ».
+const RANK: Record<Job['status'], number> = { queued: 0, running: 1, done: 2, failed: 2, cancelled: 2 }
+
 function upsert(job: Job) {
   const index = jobs.value.findIndex((j) => j.id === job.id)
   if (index === -1) jobs.value.unshift(job)
-  else jobs.value[index] = job
+  else if (RANK[job.status] >= RANK[jobs.value[index].status]) jobs.value[index] = job
 }
 
 function remove(id: string) {
