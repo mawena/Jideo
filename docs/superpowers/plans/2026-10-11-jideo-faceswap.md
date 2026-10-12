@@ -29,18 +29,18 @@ Mise à jour au fil de l'exécution (branche `feat/jideo-v1`). Chaque tâche coc
 - [x] Task 13 : mot de passe hors localhost et purge automatique
 - [x] Task 14 : test de bout en bout, README et finitions
 - [x] Revue finale de toute la branche (verdict : prête avec corrections — 0 critique, 4 importants)
-- [ ] Corrections de la revue finale
-  - [ ] 1. Aucun appel réseau sortant (albumentations interroge pypi.org à l'import)
-  - [ ] 2. Timeline vidéo utilisable même si le navigateur ne lit pas la vidéo (HEVC d'iPhone sous Linux)
-  - [ ] 3. Anti-bruteforce efficace face aux requêtes parallèles
-  - [ ] 4. Chiffres de performance mesurés (README, interface, spec §4.6)
-  - [ ] 5. README : `JIDEO_SECRET` documenté + conseil reverse proxy TLS
-  - [ ] 6. Pas de double détection (repli avec bordure) sur les images de vidéo et d'aperçu
-  - [ ] 7. Progression vidéo publiée au moins toutes les ~2 s
-  - [ ] 8. `./jideo` : lecture de `.env` sans `source`
-  - [ ] 9. Upload : nettoyage et message français sur toute erreur
-  - [ ] Vérification complète : tous les tests (y compris lents), build frontend, test de bout en bout
-- [ ] Re-relecture des corrections
+- [x] Corrections de la revue finale
+  - [x] 1. Aucun appel réseau sortant (albumentations interroge pypi.org à l'import)
+  - [x] 2. Timeline vidéo utilisable même si le navigateur ne lit pas la vidéo (HEVC d'iPhone sous Linux)
+  - [x] 3. Anti-bruteforce efficace face aux requêtes parallèles
+  - [x] 4. Chiffres de performance mesurés (README, interface, spec §4.6)
+  - [x] 5. README : `JIDEO_SECRET` documenté + conseil reverse proxy TLS
+  - [x] 6. Pas de double détection (repli avec bordure) sur les images de vidéo et d'aperçu
+  - [x] 7. Progression vidéo publiée au moins toutes les ~2 s
+  - [x] 8. `./jideo` : lecture de `.env` sans `source`
+  - [x] 9. Upload : nettoyage et message français sur toute erreur
+  - [x] Vérification complète : tous les tests (y compris lents), build frontend, test de bout en bout
+- [x] Re-relecture des corrections (9/9 corrigés ; reste : délais du test E2E au démarrage à froid, voir journal)
 - [ ] Bilan final et choix de l'intégration de la branche
 
 ## Global Constraints
