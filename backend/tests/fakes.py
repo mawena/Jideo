@@ -28,8 +28,10 @@ def encode_image(w: int = 64, h: int = 48, ext: str = ".png") -> bytes:
 class FakeDetector:
     def __init__(self, faces=None):
         self.faces = faces if faces is not None else [make_face(10, 1), make_face(80, 2)]
+        self.pad_fallbacks = []
 
-    def detect(self, img):
+    def detect(self, img, pad_fallback=True):
+        self.pad_fallbacks.append(pad_fallback)
         return list(self.faces)
 
 
@@ -38,10 +40,10 @@ class FakePipeline:
         self.swapped = swapped
         self.calls = []
 
-    def process(self, img, source_embedding, target_embeddings, *, enhance, watermark, threshold):
+    def process(self, img, source_embedding, target_embeddings, *, enhance, watermark, threshold, pad_fallback=True):
         self.calls.append(
             {"source": source_embedding, "targets": target_embeddings, "enhance": enhance,
-             "watermark": watermark, "threshold": threshold}
+             "watermark": watermark, "threshold": threshold, "pad_fallback": pad_fallback}
         )
         return FrameResult(255 - img, self.swapped)
 

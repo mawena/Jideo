@@ -21,6 +21,9 @@ from app.errors import Cancelled, UserError
 
 log = logging.getLogger("jideo.video")
 
+PROGRESS_EVERY_FRAMES = 10
+PROGRESS_EVERY_SECONDS = 2.0  # publie aussi quand les images sont lentes (GFPGAN, visages nombreux)
+
 FrameFn = Callable[[np.ndarray], tuple[np.ndarray, bool]]
 
 
@@ -171,7 +174,8 @@ def process_video(
     with (tmp_dir / "decode.log").open("wb") as dec_log, (tmp_dir / "encode.log").open("wb") as enc_log:
         dec = enc = None
         done = matched = 0
-        started = time.monotonic()
+        started = last_report = time.monotonic()
+        last_done = 0
         try:
             dec = subprocess.Popen(decode, stdout=subprocess.PIPE, stderr=dec_log)
             enc = subprocess.Popen(encode, stdin=subprocess.PIPE, stderr=enc_log)
@@ -186,8 +190,10 @@ def process_video(
                 enc.stdin.write(np.ascontiguousarray(out).tobytes())
                 done += 1
                 matched += int(found)
-                if done % 10 == 0:
-                    elapsed = time.monotonic() - started
+                now = time.monotonic()
+                if done - last_done >= PROGRESS_EVERY_FRAMES or now - last_report >= PROGRESS_EVERY_SECONDS:
+                    last_done, last_report = done, now
+                    elapsed = now - started
                     on_progress(done, max(total, done), done / elapsed if elapsed > 0 else None)
             enc.stdin.close()
             if enc.wait() != 0:

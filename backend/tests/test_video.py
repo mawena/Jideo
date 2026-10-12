@@ -201,3 +201,16 @@ def test_odd_dimensions_are_made_even(make_video, tmp_path):
     dst = tmp_path / "out.mp4"
     run(src, dst, tmp_path)
     assert (probe(dst).width, probe(dst).height) == (320, 240)
+
+
+def test_progress_is_published_on_time_even_when_frames_are_slow(sample_video, tmp_path, monkeypatch):
+    import time
+
+    monkeypatch.setattr("app.engine.video.PROGRESS_EVERY_SECONDS", 0.05)
+
+    def slow(frame):
+        time.sleep(0.03)
+        return frame, True
+
+    _, progress = run(sample_video, tmp_path / "out.mp4", tmp_path, frame_fn=slow)
+    assert 0 < progress[0][0] < 10  # avant la 10e image

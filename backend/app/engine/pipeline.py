@@ -31,9 +31,9 @@ class FaceSwapPipeline:
 
     def process(
         self, img: np.ndarray, source_embedding: np.ndarray, target_embeddings: list[np.ndarray] | None,
-        *, enhance: bool, watermark: bool, threshold: float,
+        *, enhance: bool, watermark: bool, threshold: float, pad_fallback: bool = True,
     ) -> FrameResult:
-        faces = match_faces(self.detector.detect(img), target_embeddings, threshold)
+        faces = match_faces(self.detector.detect(img, pad_fallback=pad_fallback), target_embeddings, threshold)
         out = img
         for face in faces:
             out = self.swapper.swap(out, face, source_embedding)

@@ -1,6 +1,7 @@
 """Routes /api/media : upload, lecture, détection des visages."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import cv2
@@ -12,6 +13,7 @@ from app.engine.video import extract_frame
 from app.errors import NotFound, UnsupportedMedia, UserError
 from app.media_info import inspect_photo, inspect_video
 
+log = logging.getLogger("jideo.media")
 router = APIRouter(prefix="/api/media")
 
 PHOTO_EXTENSIONS = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
@@ -73,9 +75,12 @@ def upload_media(request: Request, file: UploadFile) -> dict:
             inspect_photo(path, state.settings.max_photo_side) if kind == "photo"
             else inspect_video(path, thumbnail)
         )
-    except UserError:
+    except Exception as exc:
         state.storage.delete(path, thumbnail)
-        raise
+        if isinstance(exc, UserError):
+            raise
+        log.exception("Analyse du fichier téléversé impossible")
+        raise UnsupportedMedia("Fichier illisible ou corrompu") from exc
     media = state.db.insert_media(
         media_id=media_id, kind=kind, original_name=file.filename or path.name,
         path=path, thumbnail_path=thumbnail, **info,

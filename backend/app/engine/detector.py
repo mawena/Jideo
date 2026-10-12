@@ -32,9 +32,9 @@ class FaceDetector:
         )
         self._app.prepare(ctx_id=-1, det_size=det_size)
 
-    def detect(self, img: np.ndarray) -> list[DetectedFace]:
+    def detect(self, img: np.ndarray, pad_fallback: bool = True) -> list[DetectedFace]:
         faces = self._analyse(img)
-        if not faces:
+        if not faces and pad_fallback:
             # Photo recadrée au plus près du visage : le détecteur a besoin d'une marge.
             pad = round(0.25 * max(img.shape[:2]))
             padded = cv2.copyMakeBorder(img, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)

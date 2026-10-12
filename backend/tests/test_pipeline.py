@@ -84,3 +84,14 @@ def test_real_pipeline_swaps_every_face(models_dir, detector, group_img, source_
     )
     assert result.swapped == len(detector.detect(group_img))
     assert result.image.shape == group_img.shape
+
+
+@pytest.mark.parametrize("flag", [True, False])
+def test_pipeline_forwards_pad_fallback_to_the_detector(flag):
+    detector = FakeDetector([make_face(0, 1)])
+    pipeline = FaceSwapPipeline(detector, RecordingSwapper())
+    pipeline.process(
+        np.zeros((100, 100, 3), np.uint8), unit(9), None, enhance=False, watermark=False, threshold=0.35,
+        pad_fallback=flag,
+    )
+    assert detector.pad_fallbacks == [flag]

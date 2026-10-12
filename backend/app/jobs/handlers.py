@@ -36,12 +36,12 @@ def build_handlers(db, storage, engines, settings) -> dict[str, Handler]:
             raise UserError("Média cible introuvable (supprimé ?)")
         return media
 
-    def swap_image(img: np.ndarray, params: dict):
+    def swap_image(img: np.ndarray, params: dict, pad_fallback: bool):
         src = source_embedding(params)
         targets = target_embeddings(params)
         return engines.get().pipeline.process(
             img, src, targets, enhance=params["enhance"], watermark=params["watermark"],
-            threshold=params["similarity_threshold"],
+            threshold=params["similarity_threshold"], pad_fallback=pad_fallback,
         )
 
     def photo(ctx: JobContext) -> JobResult:
@@ -49,7 +49,7 @@ def build_handlers(db, storage, engines, settings) -> dict[str, Handler]:
         img = cv2.imread(media["path"], cv2.IMREAD_COLOR)
         if img is None:
             raise UserError("Image cible illisible")
-        result = swap_image(img, ctx.params)
+        result = swap_image(img, ctx.params, pad_fallback=True)  # visages choisis via /faces (avec repli)
         if result.swapped == 0:
             raise UserError("Aucun des visages choisis n'a été retrouvé dans l'image cible")
         dest = storage.result_path(ctx.job["id"], Path(media["path"]).suffix.lower())
@@ -59,7 +59,8 @@ def build_handlers(db, storage, engines, settings) -> dict[str, Handler]:
 
     def preview(ctx: JobContext) -> JobResult:
         media = target_media(ctx.params)
-        result = swap_image(extract_frame(Path(media["path"]), float(ctx.params.get("t", 0.0))), ctx.params)
+        result = swap_image(extract_frame(Path(media["path"]), float(ctx.params.get("t", 0.0))), ctx.params,
+                            pad_fallback=False)
         dest = storage.result_path(ctx.job["id"], ".jpg")
         save_image(result.image, dest)
         ctx.report_progress(1, 1)
@@ -78,7 +79,7 @@ def build_handlers(db, storage, engines, settings) -> dict[str, Handler]:
         def frame_fn(frame: np.ndarray) -> tuple[np.ndarray, bool]:
             r = pipeline.process(
                 frame, src, targets, enhance=params["enhance"], watermark=params["watermark"],
-                threshold=params["similarity_threshold"],
+                threshold=params["similarity_threshold"], pad_fallback=False,
             )
             return r.image, r.swapped > 0
 

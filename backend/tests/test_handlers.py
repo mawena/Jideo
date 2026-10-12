@@ -61,6 +61,7 @@ def test_photo_handler_writes_result(db, storage, settings, photo):
     call = engines.engine.pipeline.calls[0]
     assert np.array_equal(call["source"], source["embedding"])
     assert len(call["targets"]) == 1 and np.array_equal(call["targets"][0], target["embedding"])
+    assert call["pad_fallback"] is True  # visages cibles choisis via /faces, qui garde le repli
     assert progress == [(1, 1)]
 
 
@@ -83,7 +84,9 @@ def test_handler_fails_cleanly_when_target_media_was_deleted(db, storage, settin
 def test_preview_handler_uses_video_frame(db, storage, settings, video):
     media, source = video
     ctx, _ = make_ctx(db, storage, "preview", params_for(source, media, t=1.0))
-    result = build_handlers(db, storage, FakeEngineHolder(), settings)["preview"](ctx)
+    engines = FakeEngineHolder()
+    result = build_handlers(db, storage, engines, settings)["preview"](ctx)
+    assert engines.engine.pipeline.calls[0]["pad_fallback"] is False
     assert result.result_path.suffix == ".jpg"
     assert cv2.imread(str(result.result_path)).shape == (240, 320, 3)
 
@@ -94,6 +97,7 @@ def test_video_handler_reports_low_face_ratio(db, storage, settings, video):
     ctx, progress = make_ctx(db, storage, "video", params_for(source, media, trim={"start": 0.0, "end": 1.0}))
     result = build_handlers(db, storage, engines, settings)["video"](ctx)
     assert result.result_path.exists()
+    assert {c["pad_fallback"] for c in engines.engine.pipeline.calls} == {False}
     assert result.stats["frames"] == pytest.approx(10, abs=1)
     assert result.stats["face_ratio"] == 0
     assert "0 %" in result.message

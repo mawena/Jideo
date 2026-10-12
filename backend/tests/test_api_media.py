@@ -33,6 +33,18 @@ def test_upload_rejects_corrupted_image(make_client):
     assert uploads(client) == []
 
 
+def test_upload_unexpected_failure_is_a_french_415_and_cleans_up(make_client, monkeypatch):
+    def boom(*args, **kwargs):
+        raise KeyError("inattendu")
+
+    monkeypatch.setattr("app.api.media.inspect_photo", boom)
+    client = make_client()
+    response = upload(client, "photo.png", encode_image(64, 48, ".png"), "image/png")
+    assert response.status_code == 415
+    assert response.json()["detail"] == "Fichier illisible ou corrompu"
+    assert uploads(client) == []
+
+
 def test_upload_rejects_too_large(make_client):
     client = make_client(max_photo_mb=1)
     response = upload(client, "big.png", b"\0" * (1024 * 1024 + 1))
