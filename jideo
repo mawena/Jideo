@@ -19,10 +19,12 @@ ensure_env() {
 }
 
 url() {
-  set -a; source .env; set +a
-  local host="${JIDEO_BIND:-127.0.0.1}"
+  local host port
+  host=$(grep -E '^JIDEO_BIND=' .env 2>/dev/null | cut -d= -f2- || true)
+  port=$(grep -E '^JIDEO_PORT=' .env 2>/dev/null | cut -d= -f2- || true)
+  host="${host:-127.0.0.1}"
   [[ "$host" == "0.0.0.0" ]] && host="localhost"
-  echo "http://${host}:${JIDEO_PORT:-4545}"
+  echo "http://${host}:${port:-4545}"
 }
 
 usage() {
